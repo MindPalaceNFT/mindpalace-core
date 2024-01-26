@@ -5,41 +5,53 @@ interface IStaking {
     /// @notice Invalid owner
     error InvalidOwner();
 
-    /// @notice No rewards
-    error NoRewards();
-
-    /// @notice Emitted when a user harvests rewards
+    /// @notice Emitted when ETH is staked
     /// @param staker The address of the staker
-    /// @param amount The amount of rewards harvested
-    event Harvested(address indexed staker, uint256 amount);
-
-    /// @notice Emitted when an NFT is staked
+    event Staked(address indexed staker);
+    
+    /// @notice Emitted when ETH is staked
     /// @param staker The address of the staker
-    /// @param tokenId The token ID of the staked NFT
-    event Staked(address indexed staker, uint256 indexed tokenId);
-    
-    /// @notice Emitted when an NFT is unstaked
-    /// @param staker The address of the staker
-    /// @param tokenId The token ID of the unstaked NFT
-    event Unstaked(address indexed staker, uint256 indexed tokenId);
-    
-    /// @notice Stake an NFT
-    /// @param _tokenIds The token IDs to stake
-    function stake(uint256[] calldata _tokenIds) external;
-    
-    /// @notice Unstake an NFT
-    /// @param _tokenIds The token IDs to unstake
-    function unstake(uint256[] calldata _tokenIds) external;
+    event Unstaked(address indexed staker);
 
-    /// @notice Harvest rewards
-    function harvest() external;
+    /// @notice Invalid stake fee
+    error InvalidStakeFee();
 
-    /// @notice Change the reward token
-    /// @param _newRewardToken The new reward token
-    function changeRewardToken(address _newRewardToken) external;
+    /// @notice Not staked
+    error NotStaked();
 
-    /// @notice Earned rewards
+    /// @notice Unstake inactive
+    error UnstakeInactive();
+
+    /// @notice Already staked
+    error AlreadyStaked();
+    
+    /// @notice Stake your ETH
+    function stake() external payable;
+    
+    /// @notice Unstake all of your ETH
+    function unstake() external;
+
+    /// @notice Stake your ETH with a referral
+    /// @param referer The address of the referrer
+    function stakeWithReferral(address referer) external payable;
+
+    /// @notice Earned points for an account
     /// @param _account The account to check
-    /// @return The amount of rewards earned
+    /// @return The amount of points earned
     function earned(address _account) external view returns (uint256);
+
+    /// @notice Total earned points for an account
+    /// @param _account The account to check
+    function totalEarned(address _account) external view returns (uint256);
+
+    /// @notice Get the users referred by an account
+    /// @param _account The account to check
+    function getReferredUsers(address _account) external view returns (address[] memory);
+
+    struct StakeInfo {
+        uint256 stakedAt;
+        uint256 rewardsStored;
+        uint256 totalStaked;
+        address[] referredUsers;
+    }
 }
