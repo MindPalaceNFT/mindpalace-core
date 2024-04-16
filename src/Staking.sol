@@ -16,11 +16,15 @@ import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import './interfaces/INFT.sol';
 import './interfaces/IStaking.sol';
 
+interface IBlastPoints {
+  function configurePointsOperator(address operator) external;
+}
+
 /**
   * @title Generate Points by Staking ETH
   * @author haruxe.eth
  **/
-contract Staking is IStaking, Ownable, ReentrancyGuard {
+contract Staking is IStaking, Ownable {
 
     mapping(address => StakeInfo) public stakeInfo;
     mapping(address => bool) public staked;
@@ -30,47 +34,54 @@ contract Staking is IStaking, Ownable, ReentrancyGuard {
 
     bool public stakeLimitActive = true;
     bool public allowUnstaking = false;
-    uint256 public constant INITIAL_STAKE_FEE = 0.1 ether;
 
-    constructor (uint256 _rewardRate) Ownable(msg.sender) {
+    address public constant BLAST_POINTS = 0x2536FE9ab3F511540F2f9e2eC2A805005C3Dd800;
+
+    uint256 public constant MINIMUM_STAKE_FEE = 0.1 ether;
+
+    constructor (uint256 _rewardRate, address _pointsOperator) Ownable(msg.sender) {
         rewardRate = _rewardRate;
+        IBlastPoints(BLAST_POINTS).configurePointsOperator(_pointsOperator);
     }
 
-    modifier unstakeActive() {
-        if (!allowUnstaking){
-            revert UnstakeInactive();
-        }
-        _;
+    /// @notice Only for emergency purposes
+    function emergencyWithdraw(uint256 _amount) external onlyOwner {
+        payable(owner()).transfer(_amount);
     }
 
     /// @inheritdoc IStaking
-    function stake() external payable nonReentrant {
+    function stake() external payable {
         _stake(address(0));
     }
 
     /// @inheritdoc IStaking
-    function stakeWithReferral(address referer) external payable nonReentrant {
+    function stakeWithReferral(address referer) external payable {
         _stake(referer);
     }
 
     /// @inheritdoc IStaking
-    function unstake() external nonReentrant unstakeActive {
-        if (!staked[msg.sender]){
-            revert NotStaked();
+    function getReferredUsers(address _account) external view returns (address[] memory) {
+        return stakeInfo[_account].referredUsers;
+    }
+
+    function _stake(address _referer) internal {
+        if (msg.value < MINIMUM_STAKE_FEE){
+            revert InvalidStakeFee();
+        }
+
+        // The referer now gets 25% of the referal's rewards bonus
+        if (_referer != address(0)){
+            StakeInfo storage referrerStakeInfo = stakeInfo[_referer];
+            referrerStakeInfo.referredUsers.push(msg.sender);
         }
 
         StakeInfo storage userStakeInfo = stakeInfo[msg.sender];
-        uint256 totalStakedForUser = userStakeInfo.totalStaked;
-
-        payable(msg.sender).transfer(totalStakedForUser);
-        
         userStakeInfo.rewardsStored += _earned(msg.sender);
-        userStakeInfo.stakedAt = 0;
-        staked[msg.sender] = false;
-        totalStakedForUser -= totalStakedForUser;
-        totalStaked -= totalStakedForUser;
+        userStakeInfo.stakedAt = block.timestamp;
+        userStakeInfo.totalStaked += msg.value;
+        staked[msg.sender] = true;
 
-        emit Unstaked(msg.sender);
+        emit Staked(msg.sender, msg.value);
     }
 
     /// @inheritdoc IStaking
@@ -88,35 +99,20 @@ contract Staking is IStaking, Ownable, ReentrancyGuard {
         return _earned(_account);
     }
 
-    /// @inheritdoc IStaking
-    function getReferredUsers(address _account) external view returns (address[] memory) {
-        return stakeInfo[_account].referredUsers;
-    }
+    /// @notice Unstake for a user
+    /// @param _staker The address of the staker
+    function unstakeFor(address _staker) external onlyOwner {
+        StakeInfo storage userStakeInfo = stakeInfo[_staker];
+        uint256 totalStakedForUser = userStakeInfo.totalStaked;
 
-    function _stake(address _referer) internal {
-        if (stakeLimitActive){
-            if (staked[msg.sender]){
-                revert AlreadyStaked();
-            }
-            if (msg.value != INITIAL_STAKE_FEE){
-                revert InvalidStakeFee();
-            }
-        }
+        payable(_staker).transfer(totalStakedForUser);
+        
+        userStakeInfo.rewardsStored += _earned(_staker);
+        userStakeInfo.stakedAt = 0;
+        userStakeInfo.totalStaked = 0;
+        staked[_staker] = false;
 
-        // The referer now gets 30% of the referal's rewards bonus
-        if (_referer != address(0)){
-            StakeInfo storage referrerStakeInfo = stakeInfo[_referer];
-            referrerStakeInfo.referredUsers.push(msg.sender);
-        }
-
-        StakeInfo storage userStakeInfo = stakeInfo[msg.sender];
-        userStakeInfo.rewardsStored += _earned(msg.sender);
-        userStakeInfo.stakedAt = block.timestamp;
-        userStakeInfo.totalStaked += msg.value;
-        staked[msg.sender] = true;
-        totalStaked += msg.value;
-
-        emit Staked(msg.sender);
+        emit Unstaked(_staker, totalStakedForUser);
     }
 
     function _earned(address _account) internal view returns (uint256) {

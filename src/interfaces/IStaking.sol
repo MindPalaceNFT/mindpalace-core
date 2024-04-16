@@ -7,11 +7,13 @@ interface IStaking {
 
     /// @notice Emitted when ETH is staked
     /// @param staker The address of the staker
-    event Staked(address indexed staker);
+    /// @param amount The amount of ETH staked
+    event Staked(address indexed staker, uint256 amount);
     
     /// @notice Emitted when ETH is staked
     /// @param staker The address of the staker
-    event Unstaked(address indexed staker);
+    /// @param amount The amount of ETH staked
+    event Unstaked(address indexed staker, uint256 amount);
 
     /// @notice Invalid stake fee
     error InvalidStakeFee();
@@ -19,17 +21,8 @@ interface IStaking {
     /// @notice Not staked
     error NotStaked();
 
-    /// @notice Unstake inactive
-    error UnstakeInactive();
-
-    /// @notice Already staked
-    error AlreadyStaked();
-    
     /// @notice Stake your ETH
     function stake() external payable;
-    
-    /// @notice Unstake all of your ETH
-    function unstake() external;
 
     /// @notice Stake your ETH with a referral
     /// @param referer The address of the referrer
