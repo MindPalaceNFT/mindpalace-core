@@ -10,9 +10,9 @@ pragma solidity 0.8.23;
   $$ | \_/ $$ |$$ |$$ |  $$ |\$$$$$$$ |$$ |     \$$$$$$$ |$$ |\$$$$$$$ |\$$$$$$$\ \$$$$$$$\ 
   \__|     \__|\__|\__|  \__| \_______|\__|      \_______|\__| \_______| \_______| \_______|*/
 
-import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
-import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import './interfaces/INFT.sol';
 import './interfaces/IStaking.sol';
 

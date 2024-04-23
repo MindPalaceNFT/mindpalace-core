@@ -1,39 +1,103 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.23;
 
-import "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {MerkleProof} from 'openzeppelin-contracts/contracts/utils/cryptography/MerkleProof.sol';
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import {MerkleProof} from '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 
 import './interfaces/INFT.sol';
 
-contract NFT is ERC721, INFT, Ownable {
+contract MindPalaceNFT is ERC721, INFT, Ownable {
 
     uint256 internal tokenIdCounter = 1;
 
-    bytes32 internal merkleRoot;
-    uint256 internal mintFee = 0.1 ether;
-    uint256 internal mintCap = 10_000;
+    /// @notice Tree of addresses who have a reserved free mint.
+    bytes32 internal merkleRootFreeReserved;
 
-    constructor(bytes32 _merkleRoot) ERC721("NFT", "NFT") Ownable(msg.sender) {
-        merkleRoot = _merkleRoot;
+    bytes32 internal merkleRootFreeStandard;
+
+    /// @notice Tree of addresses who may mint during whitelist mint.
+    bytes32 internal merkleRootWhitelist;
+
+    uint256 internal mintFee = 0.1 ether;
+    uint256 internal mintCap = 500;
+    uint256 internal totalReserved = 134;
+
+    /// @notice SET BEFORE DEPLOYMENT
+    string internal baseURI = '';
+
+    constructor(bytes32 _merkleRootFree, bytes32 _merkleRootWhitelist, address _premintAdress) ERC721("NFT", "NFT") Ownable(msg.sender) {
+        merkleRootWhitelist = _merkleRootWhitelist;
+        merkleRootFree = _merkleRootFree;
+        _mintInternal(_premintAddress, 100);
     }
 
     /// @inheritdoc INFT
-    function whitelistMint(bytes32[] calldata _merkleProof, uint256 _quantity) external {
+    function freeMint(bytes32[] calldata _merkleProof, uint256 _quantity) external {
         bytes32 node = keccak256(abi.encodePacked(msg.sender, _quantity));
-        if (!MerkleProof.verify(_merkleProof, merkleRoot, node)){
+        if (!MerkleProof.verify(_merkleProof, merkleRootWhitelist, node)){
             revert InvalidProof();
+        }
+
+        if (msg.value != mintFee * _quantity){
+            revert InvalidMintFee();
+        }
+
+        if ((mintCap - tokenIdCounter) < totalReserved) {
+            revert MintCapExceeded();
         }
 
         _mintInternal(msg.sender, _quantity);
     }
 
     /// @inheritdoc INFT
-    function mint(uint256 _quantity) external payable {
+    function whitelistMint(bytes32[] calldata _merkleProof, uint256 _quantity) external {
+        bytes32 node = keccak256(abi.encodePacked(msg.sender, _quantity));
+        if (!MerkleProof.verify(_merkleProof, merkleRootWhitelist, node)){
+            revert InvalidProof();
+        }
+
         if (msg.value != mintFee * _quantity){
             revert InvalidMintFee();
         }
+
+        if ((mintCap - tokenIdCounter) < totalReserved) {
+            revert MintCapExceeded();
+        }
+
+        _mintInternal(msg.sender, _quantity);
+    }
+
+    /// @inheritdoc INFT
+    function reservedMint(bytes32[] calldata _merkleProof) external payable {
+        bytes32 node = keccak256(abi.encodePacked(msg.sender, _quantity));
+        if (!MerkleProof.verify(_merkleProof, merkleRootFree, node)){
+            revert InvalidProof();
+        }
+
+        if (msg.value != mintFee * _quantity){
+            revert InvalidMintFee();
+        }
+
+        if ((mintCap - tokenIdCounter) < totalReserved) {
+            revert MintCapExceeded();
+        }
+
+        _mintInternal(msg.sender, _quantity);
+
+        totalReserved--;
+    }
+
+    /// @inheritdoc INFT
+    function publicMint(uint256 _quantity) external payable {
+        if (msg.value != mintFee * _quantity){
+            revert InvalidMintFee();
+        }
+        
+        if ((mintCap - tokenIdCounter) < totalReserved) {
+            revert MintCapExceeded();
+        }
+
         _mintInternal(msg.sender, _quantity);
     }
 
@@ -58,17 +122,41 @@ contract NFT is ERC721, INFT, Ownable {
     }
 
     /// @inheritdoc INFT
-    function changeMerkleRoot(bytes32 _newMerkleRoot) external onlyOwner {
-        merkleRoot = _newMerkleRoot;
+    function changeMerkleRootFreeReserved(bytes32 _newMerkleRoot) external onlyOwner {
+        merkleRootFreeReserved = _newMerkleRoot;
         emit MerkleRootChanged(_newMerkleRoot);
     }
 
     /// @inheritdoc INFT
-    function withdraw() external onlyOwner {
+    function changeMerkleRootFreeStandard(bytes32 _newMerkleRoot) external onlyOwner {
+        merkleRootFreeStandard = _newMerkleRoot;
+        emit MerkleRootChanged(_newMerkleRoot);
+    }
+
+    /// @inheritdoc INFT
+    function changeMerkleRootWhitelist(bytes32 _newMerkleRoot) external onlyOwner {
+        merkleRootWhitelist = _newMerkleRoot;
+        emit MerkleRootChanged(_newMerkleRoot);
+    }
+
+    function withdraw(uint256 _ether) external onlyOwner {
+        if (address(this).balance < _ether) {
+            revert NotEnoughBalance();
+        }
+        payable(msg.sender).transfer(_ether);
+    }
+
+    function withrawAll() external onlyOwner {
         payable(msg.sender).transfer(address(this).balance);
     }
 
-    function _baseURI() internal pure override returns (string memory) {
-        return "https://example.com/";
+    function changeURI(string calldata _newURI) external onlyOwner {
+        baseURI = _newURI;
     }
+
+    function _baseURI() internal override returns (string memory) {
+        return baseURI;
+    }
+
+    function tokenURI(uint256)
 }

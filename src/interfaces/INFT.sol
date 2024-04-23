@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.23;
 
-import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 interface INFT is IERC721 {
     /// @notice Invalid proof provided
@@ -16,6 +16,9 @@ interface INFT is IERC721 {
     /// @notice Emitted when the mint fee is changed
     /// @param newFee The new mint fee
     event MintFeeChanged(uint256 newFee);
+
+    /// @notice Not enough ether in the contract to withdraw
+    error NotEnoughBalance();
 
     /// @notice Emitted when the merkle root is changed
     /// @param newMerkleRoot The new merkle root
