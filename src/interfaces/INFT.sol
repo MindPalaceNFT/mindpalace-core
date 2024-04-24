@@ -40,10 +40,6 @@ interface INFT is IERC721 {
     /// @param _newFee The new mint fee
     function changeMintFee(uint256 _newFee) external;
 
-    /// @notice Change the merkle root
-    /// @param _newMerkleRoot The new merkle root
-    function changeMerkleRoot(bytes32 _newMerkleRoot) external;
-
     /// @notice Withdraw the ETH balance (onlyOwner)
     function withdraw() external;
 }

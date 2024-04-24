@@ -3,7 +3,6 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import {MerkleProof} from '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 
 import './interfaces/INFT.sol';
 
@@ -37,7 +36,7 @@ contract MindPalaceNFT is ERC721, INFT, Ownable {
             revert NotEnoughMintsRemaining();
         }
 
-        freeMints[msg.sender]--;
+        freeMints[msg.sender] -= _quantity;
 
         if (msg.value != mintFee * _quantity){
             revert InvalidMintFee();
