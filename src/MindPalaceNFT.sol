@@ -9,35 +9,35 @@ import './interfaces/INFT.sol';
 
 contract MindPalaceNFT is ERC721, INFT, Ownable {
 
-    uint256 internal tokenIdCounter = 1;
+    uint256 public tokenIdCounter = 0;
 
-    /// @notice Tree of addresses who have a reserved free mint.
-    bytes32 internal merkleRootFreeReserved;
+    /// @notice Mapping for user mint information
+    mapping(address => uint256) public reservedMints;
+    mapping(address => uint256) public freeMints;
+    mapping(address => uint256) public whitelistMints;
 
-    bytes32 internal merkleRootFreeStandard;
-
-    /// @notice Tree of addresses who may mint during whitelist mint.
-    bytes32 internal merkleRootWhitelist;
+    uint256 internal totalReserved = 0;
 
     uint256 internal mintFee = 0.1 ether;
-    uint256 internal mintCap = 500;
-    uint256 internal totalReserved = 134;
+
+    /// @notice mintCap is set to 1 less than 500 to ensure only 500 exist
+    uint256 internal mintCap = 499;
 
     /// @notice SET BEFORE DEPLOYMENT
     string internal baseURI = '';
 
-    constructor(bytes32 _merkleRootFree, bytes32 _merkleRootWhitelist, address _premintAdress) ERC721("NFT", "NFT") Ownable(msg.sender) {
-        merkleRootWhitelist = _merkleRootWhitelist;
-        merkleRootFree = _merkleRootFree;
+    constructor(address _premintAddress) ERC721("MindPalaceNFT", "MP") Ownable(msg.sender) {
         _mintInternal(_premintAddress, 100);
     }
 
     /// @inheritdoc INFT
-    function freeMint(bytes32[] calldata _merkleProof, uint256 _quantity) external {
-        bytes32 node = keccak256(abi.encodePacked(msg.sender, _quantity));
-        if (!MerkleProof.verify(_merkleProof, merkleRootWhitelist, node)){
-            revert InvalidProof();
+    function freeMint(uint256 _quantity) external {
+        if (freeMints[msg.sender] < 1)
+        {
+            revert NotEnoughMintsRemaining();
         }
+
+        freeMints[msg.sender]--;
 
         if (msg.value != mintFee * _quantity){
             revert InvalidMintFee();
@@ -51,11 +51,13 @@ contract MindPalaceNFT is ERC721, INFT, Ownable {
     }
 
     /// @inheritdoc INFT
-    function whitelistMint(bytes32[] calldata _merkleProof, uint256 _quantity) external {
-        bytes32 node = keccak256(abi.encodePacked(msg.sender, _quantity));
-        if (!MerkleProof.verify(_merkleProof, merkleRootWhitelist, node)){
-            revert InvalidProof();
+    function whitelistMint(uint256 _quantity) external {
+        if (whitelistMints[msg.sender] < _quantity)
+        {
+            revert NotEnoughMintsRemaining();
         }
+
+        whitelistMints[msg.sender] -= _quantity;
 
         if (msg.value != mintFee * _quantity){
             revert InvalidMintFee();
@@ -69,11 +71,13 @@ contract MindPalaceNFT is ERC721, INFT, Ownable {
     }
 
     /// @inheritdoc INFT
-    function reservedMint(bytes32[] calldata _merkleProof) external payable {
-        bytes32 node = keccak256(abi.encodePacked(msg.sender, _quantity));
-        if (!MerkleProof.verify(_merkleProof, merkleRootFree, node)){
-            revert InvalidProof();
+    function reservedMint(uint256 _quantity) external payable {
+        if (reservedMints[msg.sender] < _quantity)
+        {
+            revert NotEnoughMintsRemaining();
         }
+
+        reservedMints[msg.sender] -= _quantity;
 
         if (msg.value != mintFee * _quantity){
             revert InvalidMintFee();
@@ -121,22 +125,16 @@ contract MindPalaceNFT is ERC721, INFT, Ownable {
         emit MintFeeChanged(_newFee);
     }
 
-    /// @inheritdoc INFT
-    function changeMerkleRootFreeReserved(bytes32 _newMerkleRoot) external onlyOwner {
-        merkleRootFreeReserved = _newMerkleRoot;
-        emit MerkleRootChanged(_newMerkleRoot);
+    function addReservedList(address[] calldata _addresses, uint256[] calldata _mintAmount) external onlyOwner {
+        assert (_addresses.length == _mintAmount.length);
     }
 
-    /// @inheritdoc INFT
-    function changeMerkleRootFreeStandard(bytes32 _newMerkleRoot) external onlyOwner {
-        merkleRootFreeStandard = _newMerkleRoot;
-        emit MerkleRootChanged(_newMerkleRoot);
+    function addFreeList(address[] calldata _addresses, uint256[] calldata _mintAmount) external onlyOwner {
+        assert (_addresses.length == _mintAmount.length);
     }
 
-    /// @inheritdoc INFT
-    function changeMerkleRootWhitelist(bytes32 _newMerkleRoot) external onlyOwner {
-        merkleRootWhitelist = _newMerkleRoot;
-        emit MerkleRootChanged(_newMerkleRoot);
+    function addWhitelist(address[] calldata _addresses, uint256[] calldata _mintAmount) external onlyOwner {
+        assert (_addresses.length == _mintAmount.length);
     }
 
     function withdraw(uint256 _ether) external onlyOwner {
@@ -154,9 +152,7 @@ contract MindPalaceNFT is ERC721, INFT, Ownable {
         baseURI = _newURI;
     }
 
-    function _baseURI() internal override returns (string memory) {
+    function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
-
-    function tokenURI(uint256)
 }

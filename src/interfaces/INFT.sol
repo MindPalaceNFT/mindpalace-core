@@ -13,6 +13,9 @@ interface INFT is IERC721 {
     /// @notice Mint cap exceeded
     error MintCapExceeded();
 
+    /// @notice Cap exceeded for given user
+    error NotEnoughMintsRemaining();
+
     /// @notice Emitted when the mint fee is changed
     /// @param newFee The new mint fee
     event MintFeeChanged(uint256 newFee);

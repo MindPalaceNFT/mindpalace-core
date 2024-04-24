@@ -3,6 +3,7 @@
     "@openzeppelin/contracts": "^5.0.2",
     "ethers": "^6.9.2",
     "keccak256": "^1.0.6",
-    "merkletreejs": "^0.3.11"
+    "merkletreejs": "^0.3.11",
+    "pdf-parse": "^1.1.1"
   }
 }
