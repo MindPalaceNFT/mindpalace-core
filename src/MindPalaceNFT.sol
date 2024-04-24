@@ -124,16 +124,29 @@ contract MindPalaceNFT is ERC721, INFT, Ownable {
         emit MintFeeChanged(_newFee);
     }
 
-    function addReservedList(address[] calldata _addresses, uint256[] calldata _mintAmount) external onlyOwner {
-        assert (_addresses.length == _mintAmount.length);
+    function addReservedList(address[] calldata _addresses, uint256[] calldata _mintAmounts) external onlyOwner {
+        assert (_addresses.length == _mintAmounts.length);
+        uint256 length = _addresses.length;
+        for (uint256 i; i < length; ++i){
+            reservedMints[_addresses[i]] = _mintAmounts[i];
+            totalReserved++;
+        }
     }
 
-    function addFreeList(address[] calldata _addresses, uint256[] calldata _mintAmount) external onlyOwner {
-        assert (_addresses.length == _mintAmount.length);
+    function addFreeList(address[] calldata _addresses, uint256[] calldata _mintAmounts) external onlyOwner {
+        assert (_addresses.length == _mintAmounts.length);
+        uint256 length = _addresses.length;
+        for (uint256 i; i < length; ++i){
+            freeMints[_addresses[i]] = _mintAmounts[i];
+        }
     }
 
-    function addWhitelist(address[] calldata _addresses, uint256[] calldata _mintAmount) external onlyOwner {
-        assert (_addresses.length == _mintAmount.length);
+    function addWhitelist(address[] calldata _addresses, uint256[] calldata _mintAmounts) external onlyOwner {
+        assert (_addresses.length == _mintAmounts.length);
+        uint256 length = _addresses.length;
+        for (uint256 i; i < length; ++i){
+            whitelistMints[_addresses[i]] = _mintAmounts[i];
+        }
     }
 
     function withdraw(uint256 _ether) external onlyOwner {
